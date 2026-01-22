@@ -1,0 +1,40 @@
+name: Build Windows exe
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - run: pip install --upgrade pip setuptools wheel
+      - run: pip install fastapi uvicorn python-dotenv sentence-transformers pyinstaller
+      - run: pip install annoy llama-cpp-python
+      - name: Setup build tools
+        run: |
+          choco install visualstudio2022buildtools cmake ninja -y
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Create minimal data structure
+        shell: powershell
+        run: |
+          mkdir -p data/docs
+          echo "Test document" > data/docs/test.txt
+          mkdir -p app
+      - name: Build exe
+        run: pyinstaller --noconfirm --onedir --name rag_qa_app launcher.py
+      - name: Copy static files
+        shell: powershell
+        run: |
+          if (Test-Path "static") { Copy-Item -Path "static" -Destination "dist/rag_qa_app/static" -Recurse -Force }
+          if (Test-Path "data") { Copy-Item -Path "data" -Destination "dist/rag_qa_app/data" -Recurse -Force }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rag_qa_app-windows-exe
+          path: dist/rag_qa_app/
+          retention-days: 30
