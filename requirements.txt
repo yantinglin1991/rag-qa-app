@@ -4,3 +4,4 @@ python-dotenv==1.0.0
 pyinstaller==6.17.0
 sentence-transformers==3.0.0
 llama-cpp-python==0.2.90
+python-multipart==0.0.6
