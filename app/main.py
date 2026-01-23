@@ -2,6 +2,7 @@
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
+import sys
 from .model_loader import ModelLoader
 from .retriever import Retriever
 import time
@@ -10,16 +11,27 @@ app = FastAPI()
 model = ModelLoader()
 retriever = Retriever()
 
+# Determine base directory for static files
+if getattr(sys, 'frozen', False):
+    # Running as PyInstaller executable
+    base_dir = sys._MEIPASS
+else:
+    # Running as Python script
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+static_dir = os.path.join(base_dir, 'static')
+
 # Serve static files
-base_dir = os.path.dirname(os.path.abspath(__file__))
-static_dir = os.path.join(base_dir, '..', 'static')
 if os.path.exists(static_dir):
     app.mount('/static', StaticFiles(directory=static_dir), name='static')
 
 
 @app.get('/')
 async def root():
-    return FileResponse(os.path.join(static_dir, 'index.html'))
+    index_file = os.path.join(static_dir, 'index.html')
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    return {'message': 'index.html not found', 'static_dir': static_dir}
 
 
 @app.get('/health')
