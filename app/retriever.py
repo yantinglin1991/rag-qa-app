@@ -46,7 +46,7 @@ class Retriever:
 
     def retrieve(self, query, k=3):
         if not self.indexed:
-            return [{"id": "sample", "text": "Sample document. Enable real retrieval by running build scripts."}]
+            return [{"id": "sample", "text": "Sample document. Enable real retrieval by uploading documents."}]
 
         try:
             with open(self.emb_path, 'r', encoding='utf-8') as f:
@@ -56,18 +56,32 @@ class Retriever:
 
         qv = self._embed_query(query)
         scores = []
-        for fname, vec in embeddings.items():
+        for chunk_id, vec in embeddings.items():
             score = self._cosine(qv, vec)
-            scores.append((fname, score))
+            scores.append((chunk_id, score))
         scores.sort(key=lambda x: x[1], reverse=True)
         results = []
-        for fname, score in scores[:k]:
-            doc_path = os.path.join(os.path.dirname(__file__), "..", "data", "docs", fname)
+        
+        # Load index to map chunk_id to filename
+        index_path = os.getenv("INDEX_PATH", "./data/index.json")
+        index_data = {}
+        try:
+            with open(index_path, 'r', encoding='utf-8') as f:
+                index_data = json.load(f)
+        except Exception:
+            pass
+        
+        for chunk_id, score in scores[:k]:
+            # Extract filename from chunk_id (format: filename_chunk_N)
+            parts = chunk_id.rsplit('_chunk_', 1)
+            filename = parts[0] if parts else chunk_id
+            
+            doc_path = os.path.join(os.path.dirname(__file__), "..", "data", "docs", filename)
             text = ""
             try:
                 with open(doc_path, 'r', encoding='utf-8') as f:
                     text = f.read()
             except Exception:
                 text = "(failed to read doc)"
-            results.append({"id": fname, "score": float(score), "text": text[:2000]})
+            results.append({"id": chunk_id, "filename": filename, "score": float(score), "text": text[:2000]})
         return results

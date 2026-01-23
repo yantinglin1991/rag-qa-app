@@ -1,10 +1,11 @@
-﻿from fastapi import FastAPI, Request
+﻿from fastapi import FastAPI, Request, UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
 import sys
 from .model_loader import ModelLoader
 from .retriever import Retriever
+from .document_processor import process_document, get_documents_list, delete_document
 import time
 
 app = FastAPI()
@@ -86,3 +87,57 @@ async def qa(req: Request):
             'llm_baseline_ms': round(t_llm_baseline, 2),
         },
     }
+
+
+@app.post('/upload-doc')
+async def upload_document(file: UploadFile = File(...)):
+    """Upload and process a document for the knowledge base"""
+    try:
+        content = await file.read()
+        text = content.decode('utf-8')
+        
+        result = process_document(file.filename, text)
+        return result
+    
+    except Exception as e:
+        return {
+            'success': False,
+            'message': f'Upload failed: {str(e)}'
+        }
+
+
+@app.get('/documents')
+async def list_documents():
+    """Get list of uploaded documents"""
+    try:
+        docs = get_documents_list()
+        return {
+            'success': True,
+            'documents': docs,
+            'count': len(docs)
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'message': f'Failed to list documents: {str(e)}'
+        }
+
+
+@app.delete('/documents/{filename}')
+async def delete_doc(filename: str):
+    """Delete a document from the knowledge base"""
+    try:
+        # Prevent directory traversal attacks
+        if '/' in filename or '\\' in filename:
+            return {
+                'success': False,
+                'message': 'Invalid filename'
+            }
+        
+        result = delete_document(filename)
+        return result
+    except Exception as e:
+        return {
+            'success': False,
+            'message': f'Delete failed: {str(e)}'
+        }
