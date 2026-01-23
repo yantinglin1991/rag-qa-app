@@ -1,4 +1,4 @@
-name: Build Windows exe
+﻿name: Build Windows exe
 
 on:
   push:
@@ -17,15 +17,13 @@ jobs:
       - run: pip install fastapi uvicorn python-dotenv sentence-transformers pyinstaller
       - run: pip install annoy llama-cpp-python
       - name: Setup build tools
-        run: |
-          choco install visualstudio2022buildtools cmake ninja -y
+        run: choco install visualstudio2022buildtools cmake ninja -y
       - uses: ilammy/msvc-dev-cmd@v1
       - name: Create minimal data structure
         shell: powershell
         run: |
-          mkdir -p data/docs
+          New-Item -ItemType Directory -Path data/docs -Force
           echo "Test document" > data/docs/test.txt
-          mkdir -p app
       - name: Build exe
         run: pyinstaller --noconfirm --onedir --name rag_qa_app launcher.py
       - name: Copy static files
