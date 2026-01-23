@@ -12,14 +12,30 @@ model = ModelLoader()
 retriever = Retriever()
 
 # Determine base directory for static files
-if getattr(sys, 'frozen', False):
-    # Running as PyInstaller executable
-    base_dir = sys._MEIPASS
-else:
-    # Running as Python script
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+def find_static_dir():
+    # List of possible paths to check
+    possible_paths = []
+    
+    if getattr(sys, 'frozen', False):
+        # Running as PyInstaller executable
+        base = sys._MEIPASS
+        possible_paths = [
+            os.path.join(base, 'static'),
+            os.path.join(base, '..', 'static'),
+            os.path.join(os.path.dirname(base), 'static'),
+        ]
+    else:
+        # Running as Python script
+        base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        possible_paths = [os.path.join(base, 'static')]
+    
+    for path in possible_paths:
+        if os.path.exists(path):
+            return path
+    
+    return possible_paths[0]  # Return first path even if not exists
 
-static_dir = os.path.join(base_dir, 'static')
+static_dir = find_static_dir()
 
 # Serve static files
 if os.path.exists(static_dir):
@@ -31,7 +47,7 @@ async def root():
     index_file = os.path.join(static_dir, 'index.html')
     if os.path.exists(index_file):
         return FileResponse(index_file)
-    return {'message': 'index.html not found', 'static_dir': static_dir}
+    return {'message': 'index.html not found', 'static_dir': static_dir, 'exists': os.path.exists(static_dir)}
 
 
 @app.get('/health')
